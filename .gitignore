@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+backend/.env
+backend/prisma/*.db
+backend/prisma/*.db-journal
+backend/prisma/*.db-shm
+backend/prisma/*.db-wal
+backend/src/generated/
+coverage/
+test-vault/
+.vault-cache/
+backend/.env.vault
+.DS_Store
