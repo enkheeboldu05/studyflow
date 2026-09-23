@@ -1,7 +1,7 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Recurrence = 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY';
-export type PageName = 'today' | 'week' | 'inbox' | 'notes' | 'progress' | 'settings';
+export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'notes' | 'progress' | 'settings';
 
 export interface UserSettings {
   theme: 'LIGHT' | 'DARK' | 'SYSTEM';

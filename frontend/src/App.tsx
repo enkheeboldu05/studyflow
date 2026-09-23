@@ -6,6 +6,7 @@ import { TaskEditor } from './components/TaskEditor';
 import { api } from './lib/api';
 import { todayKey } from './lib/dates';
 import { InboxPage } from './pages/InboxPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { NotesWorkspace } from './pages/NotesWorkspace';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -127,6 +128,7 @@ function App() {
       <main className="main-area">
         {page === 'today' && <TodayPage user={user} subjects={activeSubjects} tasks={tasks} weekStartsOn={settings.weekStartsOn} showCompleted={settings.showCompleted} {...todayProps} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} />}
         {page === 'week' && <WeekPage tasks={visibleTasks} inbox={inbox} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} onWeekChange={() => undefined} />}
+        {page === 'calendar' && <CalendarPage tasks={visibleTasks} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} />}
         {page === 'inbox' && <InboxPage tasks={inbox} subjects={activeSubjects} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={() => setEditor({ date: null })} onArchive={archiveTask} />}
         {page === 'notes' && <NotesWorkspace subjects={activeSubjects} onOpenSettings={() => setPage('settings')} />}
         {page === 'progress' && <ProgressPage progress={progress} />}

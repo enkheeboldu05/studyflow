@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Inbox, LayoutList, LogOut, Menu, Plus, Settings, TrendingUp, X } from 'lucide-react';
+import { BookOpen, CalendarDays, CalendarRange, Inbox, LayoutList, LogOut, Menu, Plus, Settings, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
 import type { PageName, StudyTask, Subject, User } from '../types';
 
@@ -17,6 +17,7 @@ const links: Array<{ page: PageName; label: string; icon: typeof LayoutList }> =
   { page: 'today', label: 'Today', icon: LayoutList },
   { page: 'week', label: 'Weekly planner', icon: CalendarDays },
   { page: 'inbox', label: 'Inbox & backlog', icon: Inbox },
+  { page: 'calendar', label: 'Calendar', icon: CalendarRange },
   { page: 'notes', label: 'Notes', icon: BookOpen },
   { page: 'progress', label: 'Progress', icon: TrendingUp },
   { page: 'settings', label: 'Settings', icon: Settings },

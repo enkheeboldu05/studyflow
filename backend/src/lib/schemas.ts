@@ -40,7 +40,7 @@ export const taskPatchSchema = taskSchema.partial().extend({
 export const settingsSchema = z.object({
   theme: z.enum(['LIGHT', 'DARK', 'SYSTEM']).optional(),
   weekStartsOn: z.union([z.literal(0), z.literal(1)]).optional(),
-  defaultPage: z.enum(['today', 'week', 'inbox', 'notes', 'progress', 'settings']).optional(),
+  defaultPage: z.enum(['today', 'week', 'calendar', 'inbox', 'notes', 'progress', 'settings']).optional(),
   showCompleted: z.boolean().optional(),
   morningCheckIn: z.boolean().optional(),
   automaticBackup: z.boolean().optional(),
