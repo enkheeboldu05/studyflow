@@ -2,6 +2,7 @@ export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Recurrence = 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY';
 export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'notes' | 'progress' | 'settings';
+export type AppTheme = 'LIGHT' | 'DARK' | 'SYSTEM' | 'AUBERGINE';
 
 export interface UserSettings {
   theme: 'LIGHT' | 'DARK' | 'SYSTEM';
@@ -107,4 +108,8 @@ export interface VaultStatus {
     lastError?: string | null;
     _count: { notes: number; attachments: number; tags: number };
   } | null;
+}
+
+export interface LinkedVaultNote extends VaultNote {
+  vault?: { name: string };
 }

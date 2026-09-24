@@ -1,5 +1,5 @@
 import { Archive, Inbox, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QuickAdd } from '../components/QuickAdd';
 import { TaskCard } from '../components/TaskCard';
 import type { StudyTask, Subject } from '../types';
@@ -17,6 +17,9 @@ interface InboxPageProps {
 export function InboxPage({ tasks, subjects, onRefresh, onToggle, onEdit, onNew, onArchive }: InboxPageProps) {
   const [search, setSearch] = useState('');
   const [subject, setSubject] = useState('');
+  useEffect(() => {
+    if (subject && !subjects.some((item) => item.id === Number(subject))) setSubject('');
+  }, [subject, subjects]);
   const filtered = useMemo(() => tasks.filter((task) => {
     const matchesText = `${task.title} ${task.description ?? ''}`.toLowerCase().includes(search.toLowerCase());
     return matchesText && (!subject || task.subjectId === Number(subject));

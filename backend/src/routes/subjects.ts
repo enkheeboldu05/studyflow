@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { subjectSchema } from '../lib/schemas.js';
 
+function isDuplicateName(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+}
 export const subjectsRouter = Router();
 
 subjectsRouter.get('/', async (request, response, next) => {
@@ -23,9 +26,13 @@ subjectsRouter.post('/', async (request, response, next) => {
   try {
     const parsed = subjectSchema.safeParse(request.body);
     if (!parsed.success) return response.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid subject.' });
-    const subject = await prisma.subject.create({ data: { ...parsed.data, userId: request.userId! } });
+    const subject = await prisma.subject.create({
+      data: { ...parsed.data, userId: request.userId! },
+      include: { _count: { select: { tasks: true } } },
+    });
     response.status(201).json({ subject });
   } catch (error) {
+    if (isDuplicateName(error)) return response.status(409).json({ error: 'A subject with this name already exists.' });
     next(error);
   }
 });
@@ -41,9 +48,13 @@ subjectsRouter.patch('/:id', async (request, response, next) => {
     const archivedAt = typeof request.body.archived === 'boolean'
       ? (request.body.archived ? new Date() : null)
       : existing.archivedAt;
-    const subject = await prisma.subject.update({ where: { id }, data: { ...data, archivedAt } });
+    const subject = await prisma.subject.update({
+      where: { id }, data: { ...data, archivedAt },
+      include: { _count: { select: { tasks: true } } },
+    });
     response.json({ subject });
   } catch (error) {
+    if (isDuplicateName(error)) return response.status(409).json({ error: 'A subject with this name already exists.' });
     next(error);
   }
 });

@@ -120,7 +120,7 @@ tasksRouter.get('/:id/notes', async (request, response, next) => {
   try {
     const task = await prisma.task.findFirst({ where: { id: Number(request.params.id), userId: request.userId! } });
     if (!task) return response.status(404).json({ error: 'Task not found.' });
-    const links = await prisma.taskNote.findMany({ where: { taskId: task.id }, include: { note: true }, orderBy: { note: { title: 'asc' } } });
+    const links = await prisma.taskNote.findMany({ where: { taskId: task.id }, include: { note: { include: { vault: { select: { name: true } } } } }, orderBy: { note: { title: 'asc' } } });
     response.json({ notes: links.map((link) => link.note) });
   } catch (error) { next(error); }
 });

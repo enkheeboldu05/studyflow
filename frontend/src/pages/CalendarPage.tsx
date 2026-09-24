@@ -1,12 +1,12 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { addDays, dateKey, startOfWeek, todayKey } from '../lib/dates';
 import type { StudyTask } from '../types';
 
 interface CalendarPageProps {
   tasks: StudyTask[];
   weekStartsOn: number;
-  onMove: (task: StudyTask, date: string) => void;
+  onMove: (task: StudyTask, date: string) => void | Promise<void>;
   onEdit: (task: StudyTask) => void;
   onNew: (date: string) => void;
 }
@@ -32,12 +32,18 @@ export function CalendarPage({ tasks, weekStartsOn, onMove, onEdit, onNew }: Cal
   const [cursor, setCursor] = useState(() => monthStart(new Date()));
   const [dragged, setDragged] = useState<StudyTask | null>(null);
   const [dropTarget, setDropTarget] = useState('');
+  const [successfulDrop, setSuccessfulDrop] = useState('');
 
   const grouped = useMemo(() => tasksForDate(tasks), [tasks]);
   const gridStart = useMemo(() => startOfWeek(cursor, weekStartsOn), [cursor, weekStartsOn]);
   const monthDays = useMemo(() => Array.from({ length: 42 }, (_, index) => addDays(gridStart, index)), [gridStart]);
   const weekdays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(new Date(2026, 0, 5), weekStartsOn), index)), [weekStartsOn]);
 
+  useEffect(() => {
+    if (!successfulDrop) return;
+    const timer = window.setTimeout(() => setSuccessfulDrop(''), 1400);
+    return () => window.clearTimeout(timer);
+  }, [successfulDrop]);
   function navigate(amount: number) {
     setCursor((current) => view === 'month'
       ? new Date(current.getFullYear(), current.getMonth() + amount, 1)
@@ -48,10 +54,13 @@ export function CalendarPage({ tasks, weekStartsOn, onMove, onEdit, onNew }: Cal
     setCursor(monthStart(new Date()));
   }
 
-  function dropOn(key: string) {
-    if (dragged && dragged.scheduledDate?.slice(0, 10) !== key) onMove(dragged, key);
+  async function dropOn(key: string) {
+    const moving = dragged;
     setDragged(null);
     setDropTarget('');
+    if (!moving || moving.scheduledDate?.slice(0, 10) === key) return;
+    await onMove(moving, key);
+    setSuccessfulDrop(key);
   }
 
   function openMonth(month: number) {
@@ -96,7 +105,7 @@ export function CalendarPage({ tasks, weekStartsOn, onMove, onEdit, onNew }: Cal
               return (
                 <div
                   key={key}
-                  className={'month-day ' + (outside ? 'outside ' : '') + (key === todayKey() ? 'today ' : '') + (dropTarget === key ? 'drop-target' : '')}
+                  className={'month-day ' + (outside ? 'outside ' : '') + (key === todayKey() ? 'today ' : '') + (dropTarget === key ? 'drop-target ' : '') + (successfulDrop === key ? 'drop-success' : '')}
                   onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTarget(key); }}
                   onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(''); }}
                   onDrop={() => dropOn(key)}

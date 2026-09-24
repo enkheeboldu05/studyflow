@@ -35,6 +35,9 @@ export function NotesWorkspace({ subjects, onOpenSettings }: { subjects: Subject
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (subjectId && !subjects.some((subject) => subject.id === Number(subjectId))) setSubjectId('');
+  }, [subjectId, subjects]);
 
   const loadNotes = useCallback(async () => {
     const params = new URLSearchParams({ sort });

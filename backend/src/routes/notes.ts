@@ -32,7 +32,7 @@ notesRouter.get('/', async (request, response, next) => {
     const notes = await prisma.vaultNote.findMany({
       where: {
         vaultId: connection.id, available: true,
-        ...(search ? { OR: [{ title: { contains: search } }, { relativePath: { contains: search } }, { properties: { some: { value: { contains: search } } } }] } : {}),
+        ...(search ? { OR: [{ title: { contains: search } }, { relativePath: { contains: search } }, { properties: { some: { value: { contains: search } } } }, { tags: { some: { tag: { displayName: { contains: search } } } } }] } : {}),
         ...(folder ? { folder: { startsWith: folder } } : {}),
         ...(property ? { properties: { some: { normalizedName: property.toLocaleLowerCase() } } } : {}),
         ...(subjectId ? { taskLinks: { some: { task: { subjectId, userId: request.userId! } } } } : {}),

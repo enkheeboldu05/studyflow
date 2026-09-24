@@ -36,6 +36,22 @@ The vault remains read-only. Complete note bodies are not stored in SQLite.
 - Compact twelve-month year overview with task-density indicators.
 - Month/year navigation, Today shortcut, light/dark styling, and responsive mobile overflow.
 
+## Task workflow and themes
+
+- Weekly Planner and Calendar drops now confirm success on the destination after the server update completes.
+- Subject creation updates the shared App state immediately after the API succeeds, making the subject available across navigation, task forms, Quick Add, and filters without reloading.
+- Subject creation rejects blank and duplicate names with clear feedback and prevents double submission while saving.
+- Subject archive, restore, and deletion synchronize the same shared state; invalid Inbox and Notes filters clear automatically.
+- Theme changes, task creation/updates, and quick task capture show concise success messages.
+- The superseded Notes page, duplicate note-picker rules, and legacy Notes layout selectors were removed.
+- Aubergine Terminal is available alongside Light, Dark Navy, and System themes and persists locally without a database migration.
+- Existing tasks open in a compact read-only details dialog from Today, Weekly Planner, Calendar, and Inbox.
+- Task Details supports complete/reopen, edit, delete, and direct Obsidian note opening.
+- The editor separates primary fields, scheduling, and collapsible additional options with a sticky action footer.
+- Unsaved changes require confirmation before the editor closes.
+- The note picker loads linked notes first and searches titles, paths, properties, and tags on demand.
+- Adding or removing a task-note association never edits or deletes Markdown files.
+
 ## Deliberately deferred
 
 - Filesystem watching and automatic synchronization.
@@ -50,7 +66,7 @@ The vault remains read-only. Complete note bodies are not stored in SQLite.
 ## Verification
 
 - Backend and frontend production builds pass.
-- Eleven automated tests pass.
+- Thirteen automated tests pass, including subject lifecycle validation, tag-based note search, vault-name handoff, dated task-note creation, and recurring planner/calendar dates.
 - A synthetic task linked to two notes remained associated after save/reopen and note rename.
 - Linked tasks are visible from note detail; unlinking removes only the association and leaves the note intact.
 - Deleted notes become unavailable without deleting their cached record; a temporarily unavailable vault preserves the index.

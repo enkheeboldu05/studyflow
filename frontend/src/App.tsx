@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { MorningCheckIn } from './components/MorningCheckIn';
 import { Sidebar } from './components/Sidebar';
-import { TaskEditor } from './components/TaskEditor';
+import { TaskDetails } from './components/TaskDetails';
+import { TaskEditorDialog as TaskEditor } from './components/TaskEditorDialog';
 import { api } from './lib/api';
 import { todayKey } from './lib/dates';
 import { InboxPage } from './pages/InboxPage';
@@ -12,7 +13,7 @@ import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TodayPage } from './pages/TodayPage';
 import { WeekPage } from './pages/WeekPage';
-import type { PageName, StudyTask, Subject, User, UserSettings } from './types';
+import type { AppTheme, PageName, StudyTask, Subject, User, UserSettings } from './types';
 
 interface Dashboard {
   today: StudyTask[];
@@ -32,6 +33,17 @@ const emptyDashboard: Dashboard = { today: [], overdue: [], upcoming: [], recent
 const emptyProgress: ProgressData = { days: {}, subjects: {}, summary: { total: 0, thisWeek: 0, plannedMinutes: 0 } };
 const fallbackSettings: UserSettings = { theme: 'SYSTEM', weekStartsOn: 1, defaultPage: 'today', showCompleted: true, morningCheckIn: true, automaticBackup: false };
 
+function orderSubjects(items: Subject[]) {
+  return [...items].sort((left, right) => {
+    const archiveOrder = Number(Boolean(left.archivedAt)) - Number(Boolean(right.archivedAt));
+    return archiveOrder || left.name.localeCompare(right.name);
+  });
+}
+
+function upsertSubject(items: Subject[], subject: Subject) {
+  return orderSubjects([...items.filter((item) => item.id !== subject.id), subject]);
+}
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -42,6 +54,8 @@ function App() {
   const [progress, setProgress] = useState<ProgressData>(emptyProgress);
   const [checkIn, setCheckIn] = useState<{ needed: boolean; carryOver: StudyTask[] }>({ needed: false, carryOver: [] });
   const [editor, setEditor] = useState<{ task?: StudyTask | null; date?: string | null } | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [localTheme, setLocalTheme] = useState<AppTheme | null>(() => localStorage.getItem('studyflow.theme') === 'AUBERGINE' ? 'AUBERGINE' : null);
   const [toast, setToast] = useState('');
   const settings = user?.settings ?? fallbackSettings;
 
@@ -71,9 +85,10 @@ function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    const dark = settings.theme === 'DARK' || (settings.theme === 'SYSTEM' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    root.dataset.theme = dark ? 'dark' : 'light';
-  }, [settings.theme]);
+    const selected = localTheme ?? settings.theme;
+    const dark = selected === 'DARK' || (selected === 'SYSTEM' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.dataset.theme = selected === 'AUBERGINE' ? 'aubergine' : dark ? 'dark' : 'light';
+  }, [localTheme, settings.theme]);
 
   useEffect(() => {
     if (!toast) return;
@@ -84,6 +99,7 @@ function App() {
   const activeSubjects = subjects.filter((subject) => !subject.archivedAt);
   const inbox = tasks.filter((task) => !task.scheduledDate && task.status !== 'COMPLETED');
   const visibleTasks = settings.showCompleted ? tasks : tasks.filter((task) => task.status !== 'COMPLETED');
+  const selectedTask = detailId ? tasks.find((task) => task.id === detailId) ?? null : null;
 
   async function authenticated(current: User) {
     setUser(current);
@@ -96,6 +112,38 @@ function App() {
     setToast(status === 'COMPLETED' ? 'Task completed.' : 'Task reopened.');
     await loadData();
   }
+  async function changeTheme(theme: AppTheme) {
+    if (theme === 'AUBERGINE') {
+      localStorage.setItem('studyflow.theme', theme);
+      setLocalTheme(theme);
+      setToast('Aubergine Terminal theme applied.');
+      return;
+    }
+    localStorage.removeItem('studyflow.theme');
+    setLocalTheme(null);
+    await api.patch('/settings', { theme });
+    setToast(`${theme === 'DARK' ? 'Dark' : theme === 'LIGHT' ? 'Light' : 'System'} theme applied.`);
+    await loadData();
+  }
+
+  async function createSubject(input: { name: string; color: string }) {
+    const { subject } = await api.post<{ subject: Subject }>('/subjects', { ...input, description: '' });
+    setSubjects((current) => upsertSubject(current, subject));
+    setToast(`“${subject.name}” added.`);
+    return subject;
+  }
+
+  async function toggleSubjectArchive(subject: Subject) {
+    const { subject: updated } = await api.patch<{ subject: Subject }>(`/subjects/${subject.id}`, { archived: !subject.archivedAt });
+    setSubjects((current) => upsertSubject(current, updated));
+    setToast(updated.archivedAt ? `“${updated.name}” archived.` : `“${updated.name}” restored.`);
+  }
+
+  async function removeSubject(subject: Subject) {
+    await api.delete('/subjects/' + subject.id);
+    setSubjects((current) => current.filter((item) => item.id !== subject.id));
+    setToast(`“${subject.name}” deleted.`);
+  }
 
   async function moveTask(task: StudyTask, scheduledDate: string | null) {
     await api.patch(`/tasks/${task.id}`, { scheduledDate });
@@ -106,6 +154,13 @@ function App() {
   async function archiveTask(task: StudyTask) {
     await api.patch(`/tasks/${task.id}`, { archivedAt: new Date().toISOString() });
     setToast('Task archived.');
+    await loadData();
+  }
+
+  async function deleteTask(task: StudyTask) {
+    await api.delete('/tasks/' + task.id);
+    setDetailId(null);
+    setToast('Task deleted.');
     await loadData();
   }
 
@@ -126,15 +181,16 @@ function App() {
     <div className="app-shell">
       <Sidebar user={user} page={page} subjects={activeSubjects} tasks={tasks} inboxCount={inbox.length} onNavigate={setPage} onNewTask={() => setEditor({ date: page === 'today' ? todayKey() : null })} onLogout={logout} />
       <main className="main-area">
-        {page === 'today' && <TodayPage user={user} subjects={activeSubjects} tasks={tasks} weekStartsOn={settings.weekStartsOn} showCompleted={settings.showCompleted} {...todayProps} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} />}
-        {page === 'week' && <WeekPage tasks={visibleTasks} inbox={inbox} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} onWeekChange={() => undefined} />}
-        {page === 'calendar' && <CalendarPage tasks={visibleTasks} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onEdit={(task) => setEditor({ task })} onNew={(date) => setEditor({ date })} />}
-        {page === 'inbox' && <InboxPage tasks={inbox} subjects={activeSubjects} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setEditor({ task })} onNew={() => setEditor({ date: null })} onArchive={archiveTask} />}
+        {page === 'today' && <TodayPage user={user} subjects={activeSubjects} tasks={tasks} weekStartsOn={settings.weekStartsOn} showCompleted={settings.showCompleted} {...todayProps} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} />}
+        {page === 'week' && <WeekPage tasks={visibleTasks} inbox={inbox} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} onWeekChange={() => undefined} />}
+        {page === 'calendar' && <CalendarPage tasks={visibleTasks} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} />}
+        {page === 'inbox' && <InboxPage tasks={inbox} subjects={activeSubjects} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={() => setEditor({ date: null })} onArchive={archiveTask} />}
         {page === 'notes' && <NotesWorkspace subjects={activeSubjects} onOpenSettings={() => setPage('settings')} />}
         {page === 'progress' && <ProgressPage progress={progress} />}
-        {page === 'settings' && <SettingsPage settings={settings} subjects={subjects} onUpdated={loadData} />}
+        {page === 'settings' && <SettingsPage settings={settings} activeTheme={localTheme ?? settings.theme} subjects={subjects} onThemeChange={changeTheme} onSubjectCreate={createSubject} onSubjectToggleArchive={toggleSubjectArchive} onSubjectDelete={removeSubject} onUpdated={loadData} />}
       </main>
-      {editor && <TaskEditor task={editor.task} defaultDate={editor.date} subjects={activeSubjects} onClose={() => setEditor(null)} onSaved={async () => { setEditor(null); setToast('Your task was saved.'); await loadData(); }} />}
+      {editor && <TaskEditor task={editor.task} defaultDate={editor.date} subjects={activeSubjects} onClose={() => setEditor(null)} onSaved={async (task, created) => { setEditor(null); setToast(created ? `“${task.title}” created.` : `“${task.title}” updated.`); await loadData(); }} />}
+      {selectedTask && <TaskDetails task={selectedTask} onClose={() => setDetailId(null)} onToggle={toggleTask} onDelete={deleteTask} onEdit={(task) => { setDetailId(null); setEditor({ task }); }} />}
       {checkIn.needed && <MorningCheckIn tasks={checkIn.carryOver} username={user.username} onFinished={async () => { setCheckIn({ needed: false, carryOver: [] }); await loadData(); }} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>

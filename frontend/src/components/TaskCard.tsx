@@ -19,6 +19,10 @@ export function TaskCard({ task, compact, draggable, onToggle, onEdit, onDragSta
       className={`task-card ${compact ? 'compact' : ''} ${completed ? 'completed' : ''}`}
       draggable={draggable}
       onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/task-id', String(task.id)); onDragStart?.(task); }}
+      onClick={(event) => { if (onEdit && !(event.target as HTMLElement).closest('button')) onEdit(task); }}
+      onKeyDown={(event) => { if (onEdit && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onEdit(task); } }}
+      role={onEdit ? 'button' : undefined}
+      tabIndex={onEdit ? 0 : undefined}
     >
       <button className="task-check" onClick={() => onToggle(task)} aria-label={completed ? `Reopen ${task.title}` : `Complete ${task.title}`}>
         {completed ? <Check size={14} /> : null}
@@ -35,7 +39,7 @@ export function TaskCard({ task, compact, draggable, onToggle, onEdit, onDragSta
           {task.rescheduleCount > 0 && <span title="Times moved"><RotateCcw size={11} />{task.rescheduleCount}</span>}
         </div>
       </div>
-      {onEdit && <button className="icon-button task-menu" onClick={() => onEdit(task)} aria-label={`Edit ${task.title}`}><MoreHorizontal size={17} /></button>}
+      {onEdit && <button className="icon-button task-menu" onClick={() => onEdit(task)} aria-label={`View ${task.title}`}><MoreHorizontal size={17} /></button>}
     </article>
   );
 }
