@@ -204,4 +204,55 @@ describe('StudyFlow API', () => {
     expect(await prisma.subject.count({ where: { id: unused.body.subject.id } })).toBe(0);
   });
 
+  it('stores weekly study logs and turns a persistent timer into actual minutes', async () => {
+    const account = await signup('logger@example.com', 'Logger');
+    const other = await signup('other-logger@example.com', 'Other Logger');
+    const cookie = account.headers['set-cookie'];
+    const date = '2026-09-24';
+
+    const manual = await request(app).patch('/api/study-log/days/' + date).set('Cookie', cookie).send({ targetMinutes: 120, actualMinutes: 60 });
+    expect(manual.status).toBe(200);
+    expect(manual.body.log).toMatchObject({ date, targetMinutes: 120, actualMinutes: 60 });
+
+    const week = await request(app).get('/api/study-log?start=2026-09-21').set('Cookie', cookie);
+    expect(week.status).toBe(200);
+    expect(week.body.logs).toHaveLength(1);
+    const privateWeek = await request(app).get('/api/study-log?start=2026-09-21').set('Cookie', other.headers['set-cookie']);
+    expect(privateWeek.body.logs).toHaveLength(0);
+    await request(app).patch('/api/study-log/days/2025-01-15').set('Cookie', cookie).send({ actualMinutes: 75 });
+    await request(app).patch('/api/study-log/days/2025-01-16').set('Cookie', other.headers['set-cookie']).send({ actualMinutes: 240 });
+    const history = await request(app).get('/api/study-log?start=2025-01-01&end=2025-01-31').set('Cookie', cookie);
+    expect(history.status).toBe(200);
+    expect(history.body.logs).toHaveLength(1);
+    expect(history.body.logs[0]).toMatchObject({ date: '2025-01-15', actualMinutes: 75 });
+    expect((await request(app).get('/api/study-log?start=2025-02-01&end=2025-01-01').set('Cookie', cookie)).status).toBe(400);
+    expect((await request(app).get('/api/study-log?start=2024-01-01&end=2025-12-31').set('Cookie', cookie)).status).toBe(400);
+
+
+    const started = await request(app).post('/api/study-log/timer/start').set('Cookie', cookie).send({ date });
+    expect(started.status).toBe(201);
+    const duplicate = await request(app).post('/api/study-log/timer/start').set('Cookie', cookie).send({ date });
+    expect(duplicate.status).toBe(409);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'logger@example.com' } });
+    await prisma.studyTimer.update({ where: { userId: user.id }, data: { startedAt: new Date(Date.now() - 90_000) } });
+    const paused = await request(app).post('/api/study-log/timer/pause').set('Cookie', cookie);
+    expect(paused.status).toBe(200);
+    expect(paused.body.timer.status).toBe('PAUSED');
+    expect(paused.body.timer.elapsedSeconds).toBeGreaterThanOrEqual(89);
+
+    const resumed = await request(app).post('/api/study-log/timer/resume').set('Cookie', cookie);
+    expect(resumed.body.timer.status).toBe('RUNNING');
+    await prisma.studyTimer.update({ where: { userId: user.id }, data: { startedAt: new Date(Date.now() - 30_000) } });
+    const ended = await request(app).post('/api/study-log/timer/end').set('Cookie', cookie);
+    expect(ended.status).toBe(200);
+    expect(ended.body.loggedMinutes).toBe(2);
+    expect(ended.body.log.actualMinutes).toBe(62);
+    expect(await prisma.studyTimer.count({ where: { userId: user.id } })).toBe(0);
+
+    const adjusted = await request(app).patch('/api/study-log/days/' + date).set('Cookie', cookie).send({ actualMinutes: 180 });
+    expect(adjusted.body.log.actualMinutes).toBe(180);
+    expect((await request(app).patch('/api/study-log/days/not-a-date').set('Cookie', cookie).send({ actualMinutes: 10 })).status).toBe(400);
+  });
+
 });

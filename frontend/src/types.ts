@@ -1,7 +1,7 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Recurrence = 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY';
-export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'notes' | 'progress' | 'settings';
+export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'study-log' | 'notes' | 'progress' | 'settings';
 export type AppTheme = 'LIGHT' | 'DARK' | 'SYSTEM' | 'AUBERGINE';
 
 export interface UserSettings {
@@ -62,6 +62,25 @@ export interface TaskInput {
   important?: boolean;
   recurrence?: Recurrence;
   position?: number;
+}
+
+export interface StudyLog {
+  id: number;
+  date: string;
+  targetMinutes: number;
+  actualMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyTimer {
+  id: number;
+  logDate: string;
+  status: 'RUNNING' | 'PAUSED';
+  startedAt?: string | null;
+  elapsedSeconds: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface VaultTag {

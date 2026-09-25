@@ -11,6 +11,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { NotesWorkspace } from './pages/NotesWorkspace';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { StudyLogPage } from './pages/StudyLogPage';
 import { TodayPage } from './pages/TodayPage';
 import { WeekPage } from './pages/WeekPage';
 import type { AppTheme, PageName, StudyTask, Subject, User, UserSettings } from './types';
@@ -185,6 +186,7 @@ function App() {
         {page === 'week' && <WeekPage tasks={visibleTasks} inbox={inbox} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} onWeekChange={() => undefined} />}
         {page === 'calendar' && <CalendarPage tasks={visibleTasks} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} />}
         {page === 'inbox' && <InboxPage tasks={inbox} subjects={activeSubjects} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={() => setEditor({ date: null })} onArchive={archiveTask} />}
+        {page === 'study-log' && <StudyLogPage weekStartsOn={settings.weekStartsOn} />}
         {page === 'notes' && <NotesWorkspace subjects={activeSubjects} onOpenSettings={() => setPage('settings')} />}
         {page === 'progress' && <ProgressPage progress={progress} />}
         {page === 'settings' && <SettingsPage settings={settings} activeTheme={localTheme ?? settings.theme} subjects={subjects} onThemeChange={changeTheme} onSubjectCreate={createSubject} onSubjectToggleArchive={toggleSubjectArchive} onSubjectDelete={removeSubject} onUpdated={loadData} />}

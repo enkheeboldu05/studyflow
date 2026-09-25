@@ -52,11 +52,21 @@ The vault remains read-only. Complete note bodies are not stored in SQLite.
 - The note picker loads linked notes first and searches titles, paths, properties, and tags on demand.
 - Adding or removing a task-note association never edits or deletes Markdown files.
 
+## Study log
+
+- A dedicated weekly logger stores daily study targets and manually adjustable actual time.
+- A persistent single-session timer supports start, pause, resume, and end; ending adds rounded minutes to the start date.
+- Weekly totals are calculated from daily records and the page supports previous, current, and next week navigation.
+- A monthly study-history calendar shows actual time per day, study-intensity shading, monthly totals, and studied-day counts.
+- Previous/next controls and a native month/year picker allow direct access to older records without a practical UI time limit.
+- History queries accept a validated, user-isolated date range of up to one year while preserving the original weekly API behavior.
+- The additive SQLite migration was applied after creating a local database backup.
+
 ## Deliberately deferred
 
 - Filesystem watching and automatic synchronization.
 - Markdown editing or frontmatter rewriting.
-- Study journal sessions.
+- Detailed study-session history and journals.
 - Spaced repetition.
 - AI-generated quizzes.
 - Dataview or embedded-script execution.
@@ -66,7 +76,7 @@ The vault remains read-only. Complete note bodies are not stored in SQLite.
 ## Verification
 
 - Backend and frontend production builds pass.
-- Thirteen automated tests pass, including subject lifecycle validation, tag-based note search, vault-name handoff, dated task-note creation, and recurring planner/calendar dates.
+- Fourteen automated tests pass, including study-log timing, history ranges and isolation, subject lifecycle validation, tag-based note search, vault-name handoff, dated task-note creation, and recurring planner/calendar dates.
 - A synthetic task linked to two notes remained associated after save/reopen and note rename.
 - Linked tasks are visible from note detail; unlinking removes only the association and leaves the note intact.
 - Deleted notes become unavailable without deleting their cached record; a temporarily unavailable vault preserves the index.
@@ -82,6 +92,7 @@ The vault remains read-only. Complete note bodies are not stored in SQLite.
 
 ## Known limitations / approval needed
 
+- The minimal timer stores one active session and daily aggregate totals, not individual session records; completed time is rounded to the nearest minute and assigned to the date the session started.
 - The 164 unresolved internal links appear to be missing or non-indexed targets rather than parser failures; their filenames were deliberately omitted from this report for privacy.
 - Browser-level visual checks still need a brief manual pass at the user's preferred desktop and phone widths. Automated builds cover compilation, not pixel-level rendering.
 - Automatic filesystem watching remains deferred. Refresh is still explicit by design.

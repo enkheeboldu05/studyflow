@@ -44,6 +44,8 @@ model User {
   sessions     AuthSession[]
   settings     UserSettings?
   vault        VaultConnection?
+  studyLogs    StudyLog[]
+  studyTimer   StudyTimer?
 }
 
 model AuthSession {
@@ -84,6 +86,34 @@ model Subject {
 
   @@unique([userId, name])
   @@index([userId, archivedAt])
+}
+
+model StudyLog {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  date          String
+  targetMinutes Int      @default(0)
+  actualMinutes Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model StudyTimer {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  logDate        String
+  status         String    @default("RUNNING")
+  startedAt      DateTime?
+  elapsedSeconds Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Task {
