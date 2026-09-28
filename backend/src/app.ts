@@ -4,12 +4,10 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import { authRouter } from './routes/auth.js';
-import { notesRouter } from './routes/notes.js';
 import { overviewRouter } from './routes/overview.js';
 import { studyLogRouter } from './routes/study-log.js';
 import { subjectsRouter } from './routes/subjects.js';
 import { tasksRouter } from './routes/tasks.js';
-import { vaultRouter } from './routes/vault.js';
 import { requireAuth } from './middleware/auth.js';
 
 export const app = express();
@@ -23,8 +21,6 @@ app.use('/api/auth', authRouter);
 app.use('/api/subjects', requireAuth, subjectsRouter);
 app.use('/api/study-log', requireAuth, studyLogRouter);
 app.use('/api/tasks', requireAuth, tasksRouter);
-app.use('/api/notes', requireAuth, notesRouter);
-app.use('/api/vault', requireAuth, vaultRouter);
 app.use('/api', requireAuth, overviewRouter);
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));

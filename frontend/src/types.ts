@@ -1,8 +1,8 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Recurrence = 'NONE' | 'DAILY' | 'WEEKDAYS' | 'WEEKLY' | 'MONTHLY';
-export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'study-log' | 'notes' | 'progress' | 'settings';
-export type AppTheme = 'LIGHT' | 'DARK' | 'SYSTEM' | 'AUBERGINE';
+export type PageName = 'today' | 'week' | 'calendar' | 'inbox' | 'study-log' | 'progress' | 'settings';
+export type AppTheme = 'LIGHT' | 'DARK' | 'SYSTEM' | 'AUBERGINE' | 'SAGE' | 'PARCHMENT' | 'ROSE' | 'OCEAN';
 
 export interface UserSettings {
   theme: 'LIGHT' | 'DARK' | 'SYSTEM';
@@ -81,54 +81,4 @@ export interface StudyTimer {
   elapsedSeconds: number;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface VaultTag {
-  id: number;
-  normalizedName: string;
-  displayName: string;
-  _count?: { notes: number };
-}
-
-export interface VaultNote {
-  id: number;
-  title: string;
-  relativePath: string;
-  folder: string;
-  modifiedAt: string;
-  available: boolean;
-  isMap: boolean;
-  isTemplate: boolean;
-  metadataJson?: string;
-  tags: Array<{ tag: VaultTag }>;
-  _count?: { outgoingLinks: number; incomingLinks: number; taskLinks: number };
-}
-
-export interface VaultNoteDetail extends VaultNote {
-  vault: { name: string };
-  properties: Array<{ id: number; name: string; value: string; valueType: string }>;
-  outgoingLinks: Array<{
-    id: number; rawTarget: string; resolved: boolean; embedded: boolean;
-    targetNote?: Pick<VaultNote, 'id' | 'title' | 'relativePath' | 'available'> | null;
-    targetAttachment?: { id: number; relativePath: string; mimeType: string; available: boolean } | null;
-  }>;
-  incomingLinks: Array<{ id: number; sourceNote: Pick<VaultNote, 'id' | 'title' | 'relativePath' | 'available'> }>;
-  taskLinks: Array<{ task: Pick<StudyTask, 'id' | 'title' | 'status' | 'scheduledDate'> }>;
-}
-
-export interface VaultStatus {
-  configured: boolean;
-  available: boolean;
-  connection?: {
-    id: number;
-    name: string;
-    status: string;
-    lastIndexedAt?: string | null;
-    lastError?: string | null;
-    _count: { notes: number; attachments: number; tags: number };
-  } | null;
-}
-
-export interface LinkedVaultNote extends VaultNote {
-  vault?: { name: string };
 }

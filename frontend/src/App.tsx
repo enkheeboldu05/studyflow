@@ -5,10 +5,10 @@ import { Sidebar } from './components/Sidebar';
 import { TaskDetails } from './components/TaskDetails';
 import { TaskEditorDialog as TaskEditor } from './components/TaskEditorDialog';
 import { api } from './lib/api';
+import { isCustomTheme, themes } from './lib/themes';
 import { todayKey } from './lib/dates';
 import { InboxPage } from './pages/InboxPage';
 import { CalendarPage } from './pages/CalendarPage';
-import { NotesWorkspace } from './pages/NotesWorkspace';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StudyLogPage } from './pages/StudyLogPage';
@@ -56,7 +56,7 @@ function App() {
   const [checkIn, setCheckIn] = useState<{ needed: boolean; carryOver: StudyTask[] }>({ needed: false, carryOver: [] });
   const [editor, setEditor] = useState<{ task?: StudyTask | null; date?: string | null } | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
-  const [localTheme, setLocalTheme] = useState<AppTheme | null>(() => localStorage.getItem('studyflow.theme') === 'AUBERGINE' ? 'AUBERGINE' : null);
+  const [localTheme, setLocalTheme] = useState<AppTheme | null>(() => { const saved = localStorage.getItem('studyflow.theme'); return isCustomTheme(saved) ? saved : null; });
   const [toast, setToast] = useState('');
   const settings = user?.settings ?? fallbackSettings;
 
@@ -79,7 +79,7 @@ function App() {
 
   useEffect(() => {
     api.get<{ user: User }>('/auth/me')
-      .then(async ({ user: current }) => { setUser(current); setPage(current.settings?.defaultPage ?? 'today'); await loadData(); })
+      .then(async ({ user: current }) => { setUser(current); setPage(String(current.settings?.defaultPage) === 'notes' ? 'today' : current.settings?.defaultPage ?? 'today'); await loadData(); })
       .catch(() => setUser(null))
       .finally(() => setCheckingAuth(false));
   }, [loadData]);
@@ -87,8 +87,15 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
     const selected = localTheme ?? settings.theme;
-    const dark = selected === 'DARK' || (selected === 'SYSTEM' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    root.dataset.theme = selected === 'AUBERGINE' ? 'aubergine' : dark ? 'dark' : 'light';
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      root.dataset.theme = selected === 'SYSTEM' ? (media.matches ? 'dark' : 'light') : selected.toLowerCase();
+      root.style.colorScheme = ['dark', 'aubergine', 'ocean'].includes(root.dataset.theme) ? 'dark' : 'light';
+    };
+    apply();
+    if (selected !== 'SYSTEM') return;
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
   }, [localTheme, settings.theme]);
 
   useEffect(() => {
@@ -114,10 +121,10 @@ function App() {
     await loadData();
   }
   async function changeTheme(theme: AppTheme) {
-    if (theme === 'AUBERGINE') {
+    if (isCustomTheme(theme)) {
       localStorage.setItem('studyflow.theme', theme);
       setLocalTheme(theme);
-      setToast('Aubergine Terminal theme applied.');
+      setToast(`${themes.find((item) => item.id === theme)?.name} theme applied.`);
       return;
     }
     localStorage.removeItem('studyflow.theme');
@@ -187,7 +194,6 @@ function App() {
         {page === 'calendar' && <CalendarPage tasks={visibleTasks} weekStartsOn={settings.weekStartsOn} onMove={moveTask} onEdit={(task) => setDetailId(task.id)} onNew={(date) => setEditor({ date })} />}
         {page === 'inbox' && <InboxPage tasks={inbox} subjects={activeSubjects} onRefresh={loadData} onToggle={toggleTask} onEdit={(task) => setDetailId(task.id)} onNew={() => setEditor({ date: null })} onArchive={archiveTask} />}
         {page === 'study-log' && <StudyLogPage weekStartsOn={settings.weekStartsOn} />}
-        {page === 'notes' && <NotesWorkspace subjects={activeSubjects} onOpenSettings={() => setPage('settings')} />}
         {page === 'progress' && <ProgressPage progress={progress} />}
         {page === 'settings' && <SettingsPage settings={settings} activeTheme={localTheme ?? settings.theme} subjects={subjects} onThemeChange={changeTheme} onSubjectCreate={createSubject} onSubjectToggleArchive={toggleSubjectArchive} onSubjectDelete={removeSubject} onUpdated={loadData} />}
       </main>

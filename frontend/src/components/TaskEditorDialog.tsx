@@ -1,8 +1,8 @@
-import { BookOpen, ChevronDown, Plus, Search, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { ChevronDown, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { todayKey } from '../lib/dates';
-import type { LinkedVaultNote, StudyTask, Subject, TaskInput, VaultNote, VaultStatus } from '../types';
+import type { StudyTask, Subject, TaskInput } from '../types';
 
 interface TaskEditorDialogProps {
   task?: StudyTask | null;
@@ -16,13 +16,7 @@ export function TaskEditorDialog({ task, defaultDate, subjects, onClose, onSaved
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [selectedNotes, setSelectedNotes] = useState<LinkedVaultNote[]>([]);
-  const [noteSearch, setNoteSearch] = useState('');
-  const [noteResults, setNoteResults] = useState<VaultNote[]>([]);
-  const [searchingNotes, setSearchingNotes] = useState(false);
-  const [vaultStatus, setVaultStatus] = useState<VaultStatus | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
 
   const requestClose = useCallback(() => {
     if (dirty && !window.confirm('Discard your unsaved changes?')) return;
@@ -44,50 +38,6 @@ export function TaskEditorDialog({ task, defaultDate, subjects, onClose, onSaved
       window.removeEventListener('beforeunload', beforeUnload);
     };
   }, [dirty, requestClose]);
-
-  useEffect(() => {
-    api.get<VaultStatus>('/vault/status').then(setVaultStatus).catch(() => setVaultStatus(null));
-    if (!task) return;
-    api.get<{ notes: LinkedVaultNote[] }>('/tasks/' + task.id + '/notes')
-      .then(({ notes }) => setSelectedNotes(notes))
-      .catch(() => undefined);
-  }, [task]);
-
-  useEffect(() => {
-    const query = noteSearch.trim();
-    if (query.length < 2 || !vaultStatus?.available) {
-      setNoteResults([]);
-      setSearchingNotes(false);
-      return;
-    }
-    setSearchingNotes(true);
-    const timer = window.setTimeout(() => {
-      api.get<{ notes: VaultNote[] }>('/notes?sort=title&search=' + encodeURIComponent(query))
-        .then(({ notes }) => setNoteResults(notes.slice(0, 20)))
-        .catch(() => setNoteResults([]))
-        .finally(() => setSearchingNotes(false));
-    }, 180);
-    return () => window.clearTimeout(timer);
-  }, [noteSearch, vaultStatus?.available]);
-
-  function addNote(note: VaultNote) {
-    if (!selectedNotes.some((item) => item.id === note.id)) setSelectedNotes((current) => [...current, note]);
-    setDirty(true);
-  }
-
-  function removeNote(noteId: number) {
-    setSelectedNotes((current) => current.filter((note) => note.id !== noteId));
-    setDirty(true);
-  }
-
-  function searchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'ArrowDown') return;
-    const first = resultRef.current?.querySelector<HTMLButtonElement>('button');
-    if (first) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,15 +61,6 @@ export function TaskEditorDialog({ task, defaultDate, subjects, onClose, onSaved
       const saved = task
         ? await api.patch<{ task: StudyTask }>('/tasks/' + task.id, data)
         : await api.post<{ task: StudyTask }>('/tasks', data);
-      const taskId = saved.task.id;
-      const previous = task
-        ? (await api.get<{ notes: VaultNote[] }>('/tasks/' + taskId + '/notes')).notes.map((note) => note.id)
-        : [];
-      const selectedIds = selectedNotes.map((note) => note.id);
-      await Promise.all([
-        ...selectedIds.filter((id) => !previous.includes(id)).map((noteId) => api.post('/tasks/' + taskId + '/notes', { noteId })),
-        ...previous.filter((id) => !selectedIds.includes(id)).map((noteId) => api.delete('/tasks/' + taskId + '/notes/' + noteId)),
-      ]);
       setDirty(false);
       onSaved(saved.task, !task);
     } catch (caught) {
@@ -128,8 +69,6 @@ export function TaskEditorDialog({ task, defaultDate, subjects, onClose, onSaved
       setSaving(false);
     }
   }
-
-  const vaultUnavailable = vaultStatus?.configured && !vaultStatus.available;
 
   return (
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && requestClose()}>
@@ -168,17 +107,6 @@ export function TaskEditorDialog({ task, defaultDate, subjects, onClose, onSaved
                 <label className="checkbox-label"><input type="checkbox" name="important" defaultChecked={task?.important} /> Mark as important</label>
               </div>
             </details>
-
-            <section className="editor-section note-picker-section">
-              <div className="editor-section-heading"><span>03</span><div><h3>Linked notes</h3><p>Associations only—your Markdown remains read-only.</p></div></div>
-              {selectedNotes.length > 0 && <div className="selected-note-chips">{selectedNotes.map((note) => <span key={note.id}><span><strong>{note.title}</strong><small>{note.folder || 'Vault root'}</small></span><button type="button" onClick={() => removeNote(note.id)} aria-label={'Unlink ' + note.title}><X size={13} /></button></span>)}</div>}
-              {vaultUnavailable ? <div className="note-picker-state"><BookOpen size={17} /><span>The vault is temporarily unavailable. Existing links are preserved.</span></div> : !vaultStatus?.connection ? <div className="note-picker-state"><BookOpen size={17} /><span>Connect a development vault in Settings to link notes.</span></div> : <>
-                <label className="note-search"><Search size={15} /><input value={noteSearch} onChange={(event) => { event.stopPropagation(); setNoteSearch(event.target.value); }} onKeyDown={searchKeyDown} placeholder="Search title, path, or tag" aria-label="Search Obsidian notes" /></label>
-                {noteSearch.trim().length >= 2 && <div ref={resultRef} className="note-search-results" role="listbox" aria-label="Note search results">
-                  {searchingNotes ? <p>Searching notes…</p> : noteResults.filter((note) => !selectedNotes.some((item) => item.id === note.id)).length ? noteResults.filter((note) => !selectedNotes.some((item) => item.id === note.id)).map((note) => <button type="button" role="option" aria-selected="false" key={note.id} onClick={() => addNote(note)}><Plus size={14} /><span><strong>{note.title}</strong><small>{note.folder || 'Vault root'}{note.tags.length ? ' · ' + note.tags.slice(0, 2).map(({ tag }) => '#' + tag.displayName).join(' ') : ''}</small></span></button>) : <p>No additional notes match “{noteSearch.trim()}”.</p>}
-                </div>}
-              </>}
-            </section>
 
             {error && <div className="form-error" role="alert">{error}</div>}
           </div>

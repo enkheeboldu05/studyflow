@@ -16,11 +16,8 @@
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.1.13",
-    "vite": "^7.1.6",
-    "yaml": "^2.9.1"
+    "vite": "^7.1.6"
   },
   "devDependencies": {
     "@types/react": "^19.1.13",

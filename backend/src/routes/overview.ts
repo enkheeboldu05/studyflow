@@ -157,7 +157,7 @@ overviewRouter.post('/backup/restore', async (request, response, next) => {
         });
       }
       if (backup.settings) {
-        const parsed = settingsSchema.safeParse(backup.settings);
+        const parsed = settingsSchema.safeParse({ ...backup.settings, ...(backup.settings.defaultPage === 'notes' ? { defaultPage: 'today' } : {}) });
         if (parsed.success) await database.userSettings.update({ where: { userId: request.userId! }, data: parsed.data });
       }
     });

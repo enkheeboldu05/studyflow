@@ -1,11 +1,7 @@
-import { mkdtemp, rename, rm, unlink, writeFile } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { app } from './app.js';
 import { prisma } from './db.js';
-import { refreshVault } from './vault/indexer.js';
 
 async function signup(email: string, username: string) {
   return request(app).post('/api/auth/signup').send({ email, username, password: 'password123' });
@@ -62,84 +58,21 @@ describe('StudyFlow API', () => {
     expect(moved.body.task.dueDate).toContain('2026-09-30');
   });
 
-  it('links only the signed-in user’s tasks and indexed notes', async () => {
-    const first = await signup('notes@example.com', 'Notes');
-    const second = await signup('other-notes@example.com', 'Other');
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'notes@example.com' } });
-    const vault = await prisma.vaultConnection.create({ data: { userId: user.id, name: 'Test Vault', rootFingerprint: 'fixture' } });
-    const note = await prisma.vaultNote.create({ data: {
-      vaultId: vault.id, relativePath: 'Course/Normalization.md', normalizedPath: 'course/normalization.md',
-      title: 'Normalization', folder: 'Course', contentHash: 'hash', size: 20, modifiedAt: new Date(),
-    } });
-    const task = await request(app).post('/api/tasks').set('Cookie', first.headers['set-cookie']).send({ title: 'Review databases' });
-    const linked = await request(app).post('/api/tasks/' + task.body.task.id + '/notes').set('Cookie', first.headers['set-cookie']).send({ noteId: note.id });
-    expect(linked.status).toBe(201);
-    const listed = await request(app).get('/api/tasks/' + task.body.task.id + '/notes').set('Cookie', first.headers['set-cookie']);
-    expect(listed.body.notes[0].title).toBe('Normalization');
-    const forbidden = await request(app).post('/api/tasks/' + task.body.task.id + '/notes').set('Cookie', second.headers['set-cookie']).send({ noteId: note.id });
-    expect(forbidden.status).toBe(404);
-  });
-
-  it('preserves multi-note task links through refresh, rename, unlink, deletion, and temporary vault loss', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'studyflow-vault-'));
-    const offlineRoot = root + '-offline';
-    process.env.OBSIDIAN_VAULT_PATH = root;
-    try {
-      await writeFile(path.join(root, 'Algorithms.md'), '# Algorithms\n\n#graph-theory\n\nLinked to [[Databases]] and [[bad%ZZlink]].\n');
-      await writeFile(path.join(root, 'Databases.md'), '# Databases\n\n| Form | Rule |\n| --- | --- |\n| 3NF | No transitive dependency |\n');
-
-      const account = await signup('workflow@example.com', 'Workflow');
-      const cookie = account.headers['set-cookie'];
-      const user = await prisma.user.findUniqueOrThrow({ where: { email: 'workflow@example.com' } });
-      await refreshVault(user.id);
-      const originalNotes = await prisma.vaultNote.findMany({ where: { vault: { userId: user.id }, available: true }, orderBy: { title: 'asc' } });
-      expect(originalNotes).toHaveLength(2);
-      const tagSearch = await request(app).get('/api/notes?search=graph-theory').set('Cookie', cookie);
-      expect(tagSearch.body.notes).toHaveLength(1);
-      expect(tagSearch.body.notes[0].title).toBe('Algorithms');
-
-      const taskResponse = await request(app).post('/api/tasks').set('Cookie', cookie).send({ title: 'Review linked material', scheduledDate: '2026-09-23', dueDate: '2026-09-30' });
-      const taskId = taskResponse.body.task.id as number;
-      expect(taskResponse.body.task.scheduledDate).toContain('2026-09-23');
-      expect(taskResponse.body.task.dueDate).toContain('2026-09-30');
-      for (const note of originalNotes) {
-        const link = await request(app).post('/api/tasks/' + taskId + '/notes').set('Cookie', cookie).send({ noteId: note.id });
-        expect(link.status).toBe(201);
-      }
-
-      const reopened = await request(app).get('/api/tasks/' + taskId + '/notes').set('Cookie', cookie);
-      expect(reopened.body.notes.map((note: { title: string }) => note.title)).toEqual(['Algorithms', 'Databases']);
-      expect(reopened.body.notes[0].vault.name).toBeTruthy();
-      const databases = originalNotes.find((note) => note.title === 'Databases')!;
-      const noteView = await request(app).get('/api/notes/' + databases.id).set('Cookie', cookie);
-      expect(noteView.body.note.taskLinks[0].task.title).toBe('Review linked material');
-
-      const algorithms = originalNotes.find((note) => note.title === 'Algorithms')!;
-      await rename(path.join(root, 'Algorithms.md'), path.join(root, 'Computer Science Algorithms.md'));
-      await refreshVault(user.id);
-      const renamed = await prisma.vaultNote.findUniqueOrThrow({ where: { id: algorithms.id } });
-      expect(renamed.relativePath).toBe('Computer Science Algorithms.md');
-      expect(await prisma.taskNote.count({ where: { taskId, noteId: algorithms.id } })).toBe(1);
-
-      const unlinked = await request(app).delete('/api/tasks/' + taskId + '/notes/' + databases.id).set('Cookie', cookie);
-      expect(unlinked.status).toBe(204);
-      expect(await prisma.vaultNote.count({ where: { id: databases.id } })).toBe(1);
-      const afterUnlink = await request(app).get('/api/notes/' + databases.id).set('Cookie', cookie);
-      expect(afterUnlink.body.note.taskLinks).toHaveLength(0);
-
-      await unlink(path.join(root, 'Computer Science Algorithms.md'));
-      await refreshVault(user.id);
-      expect((await prisma.vaultNote.findUniqueOrThrow({ where: { id: algorithms.id } })).available).toBe(false);
-
-      await rename(root, offlineRoot);
-      await expect(refreshVault(user.id)).rejects.toThrow();
-      expect(await prisma.vaultNote.count({ where: { vault: { userId: user.id } } })).toBe(2);
-      await rename(offlineRoot, root);
-    } finally {
-      delete process.env.OBSIDIAN_VAULT_PATH;
-      await rm(root, { recursive: true, force: true });
-      await rm(offlineRoot, { recursive: true, force: true });
+  it('removes integration endpoints and restores legacy backups to Today', async () => {
+    const account = await signup('legacy@example.com', 'Legacy');
+    const cookie = account.headers['set-cookie'];
+    for (const endpoint of ['/api/vault/status', '/api/notes', '/api/tasks/1/notes']) {
+      expect((await request(app).get(endpoint).set('Cookie', cookie)).status).toBe(404);
     }
+    const restored = await request(app).post('/api/backup/restore').set('Cookie', cookie).send({
+      data: { subjects: [], tasks: [{ title: 'Restored task' }], settings: { defaultPage: 'notes', theme: 'DARK' } },
+    });
+    expect(restored.status).toBe(200);
+    const me = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    expect(me.body.user.settings).toMatchObject({ defaultPage: 'today', theme: 'DARK' });
+    const tasks = await request(app).get('/api/tasks').set('Cookie', cookie);
+    expect(tasks.body.tasks[0].title).toBe('Restored task');
+    expect((await request(app).patch('/api/settings').set('Cookie', cookie).send({ defaultPage: 'notes' })).status).toBe(400);
   });
 
   it('creates the next dated occurrence for planner and calendar views', async () => {

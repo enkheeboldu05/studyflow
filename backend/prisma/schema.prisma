@@ -43,7 +43,6 @@ model User {
   tasks        Task[]
   sessions     AuthSession[]
   settings     UserSettings?
-  vault        VaultConnection?
   studyLogs    StudyLog[]
   studyTimer   StudyTimer?
 }
@@ -138,138 +137,9 @@ model Task {
   updatedAt          DateTime   @updatedAt
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject            Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  noteLinks          TaskNote[]
 
   @@index([userId, scheduledDate])
   @@index([userId, dueDate])
   @@index([userId, status])
   @@index([subjectId])
-}
-
-model VaultConnection {
-  id              Int               @id @default(autoincrement())
-  userId          Int               @unique
-  name            String
-  rootFingerprint String
-  status          String            @default("READY")
-  lastIndexedAt   DateTime?
-  lastError       String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notes           VaultNote[]
-  tags            VaultTag[]
-  attachments     VaultAttachment[]
-}
-
-model VaultNote {
-  id             Int             @id @default(autoincrement())
-  vaultId        Int
-  relativePath   String
-  normalizedPath String
-  title          String
-  folder         String
-  contentHash    String
-  size           Int
-  modifiedAt     DateTime
-  metadataJson   String          @default("{}")
-  aliasesJson    String          @default("[]")
-  isMap          Boolean         @default(false)
-  isTemplate     Boolean         @default(false)
-  available      Boolean         @default(true)
-  indexedAt      DateTime        @default(now())
-  vault          VaultConnection @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  properties     VaultProperty[]
-  tags           VaultNoteTag[]
-  outgoingLinks  VaultLink[]     @relation("OutgoingLinks")
-  incomingLinks  VaultLink[]     @relation("IncomingLinks")
-  taskLinks      TaskNote[]
-
-  @@unique([vaultId, normalizedPath])
-  @@index([vaultId, title])
-  @@index([vaultId, folder])
-  @@index([vaultId, contentHash])
-}
-
-model VaultProperty {
-  id             Int       @id @default(autoincrement())
-  noteId         Int
-  name           String
-  normalizedName String
-  value          String
-  valueType      String
-  note           VaultNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-
-  @@index([noteId, normalizedName])
-  @@index([normalizedName, value])
-}
-
-model VaultTag {
-  id             Int             @id @default(autoincrement())
-  vaultId        Int
-  normalizedName String
-  displayName    String
-  vault          VaultConnection @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  notes          VaultNoteTag[]
-
-  @@unique([vaultId, normalizedName])
-}
-
-model VaultNoteTag {
-  noteId Int
-  tagId  Int
-  note   VaultNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  tag    VaultTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([noteId, tagId])
-  @@index([tagId])
-}
-
-model VaultAttachment {
-  id             Int             @id @default(autoincrement())
-  vaultId        Int
-  relativePath   String
-  normalizedPath String
-  extension      String
-  mimeType       String
-  size           Int
-  modifiedAt     DateTime
-  available      Boolean         @default(true)
-  vault          VaultConnection @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  links          VaultLink[]
-
-  @@unique([vaultId, normalizedPath])
-  @@index([vaultId, normalizedPath])
-}
-
-model VaultLink {
-  id                 Int              @id @default(autoincrement())
-  sourceNoteId       Int
-  targetNoteId       Int?
-  targetAttachmentId Int?
-  rawTarget          String
-  normalizedTarget   String
-  heading            String?
-  blockId            String?
-  kind               String
-  embedded           Boolean          @default(false)
-  resolved           Boolean          @default(false)
-  sourceNote         VaultNote        @relation("OutgoingLinks", fields: [sourceNoteId], references: [id], onDelete: Cascade)
-  targetNote         VaultNote?       @relation("IncomingLinks", fields: [targetNoteId], references: [id], onDelete: SetNull)
-  targetAttachment   VaultAttachment? @relation(fields: [targetAttachmentId], references: [id], onDelete: SetNull)
-
-  @@index([sourceNoteId])
-  @@index([targetNoteId])
-  @@index([targetAttachmentId])
-}
-
-model TaskNote {
-  taskId    Int
-  noteId    Int
-  createdAt DateTime  @default(now())
-  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  note      VaultNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-
-  @@id([taskId, noteId])
-  @@index([noteId])
 }

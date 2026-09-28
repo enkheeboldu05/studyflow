@@ -116,40 +116,6 @@ tasksRouter.patch('/:id', async (request, response, next) => {
   }
 });
 
-tasksRouter.get('/:id/notes', async (request, response, next) => {
-  try {
-    const task = await prisma.task.findFirst({ where: { id: Number(request.params.id), userId: request.userId! } });
-    if (!task) return response.status(404).json({ error: 'Task not found.' });
-    const links = await prisma.taskNote.findMany({ where: { taskId: task.id }, include: { note: { include: { vault: { select: { name: true } } } } }, orderBy: { note: { title: 'asc' } } });
-    response.json({ notes: links.map((link) => link.note) });
-  } catch (error) { next(error); }
-});
-
-tasksRouter.post('/:id/notes', async (request, response, next) => {
-  try {
-    const taskId = Number(request.params.id);
-    const noteId = Number(request.body?.noteId);
-    const [task, note] = await Promise.all([
-      prisma.task.findFirst({ where: { id: taskId, userId: request.userId! } }),
-      prisma.vaultNote.findFirst({ where: { id: noteId, vault: { userId: request.userId! }, available: true } }),
-    ]);
-    if (!task || !note) return response.status(404).json({ error: 'Task or note not found.' });
-    const link = await prisma.taskNote.upsert({ where: { taskId_noteId: { taskId, noteId } }, create: { taskId, noteId }, update: {} });
-    response.status(201).json({ link });
-  } catch (error) { next(error); }
-});
-
-tasksRouter.delete('/:id/notes/:noteId', async (request, response, next) => {
-  try {
-    const taskId = Number(request.params.id);
-    const noteId = Number(request.params.noteId);
-    const task = await prisma.task.findFirst({ where: { id: taskId, userId: request.userId! } });
-    if (!task) return response.status(404).json({ error: 'Task not found.' });
-    await prisma.taskNote.deleteMany({ where: { taskId, noteId, note: { vault: { userId: request.userId! } } } });
-    response.status(204).end();
-  } catch (error) { next(error); }
-});
-
 tasksRouter.delete('/:id', async (request, response, next) => {
   try {
     const id = Number(request.params.id);

@@ -1,8 +1,7 @@
-import { ArrowUpRight, CalendarClock, Check, Clock3, FileText, Pencil, Repeat2, RotateCcw, Star, Trash2, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { api } from '../lib/api';
+import { CalendarClock, Check, Clock3, Pencil, Repeat2, RotateCcw, Star, Trash2, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { displayDate, durationLabel } from '../lib/dates';
-import type { LinkedVaultNote, StudyTask } from '../types';
+import type { StudyTask } from '../types';
 
 interface TaskDetailsProps {
   task: StudyTask;
@@ -15,14 +14,7 @@ interface TaskDetailsProps {
 const statusLabels = { TODO: 'Planned', IN_PROGRESS: 'In progress', COMPLETED: 'Completed' };
 const repeatLabels = { NONE: 'Does not repeat', DAILY: 'Every day', WEEKDAYS: 'Weekdays', WEEKLY: 'Every week', MONTHLY: 'Every month' };
 
-function obsidianUri(note: LinkedVaultNote) {
-  const vault = note.vault?.name ? 'vault=' + encodeURIComponent(note.vault.name) + '&' : '';
-  return 'obsidian://open?' + vault + 'file=' + encodeURIComponent(note.relativePath.replace(/\.md$/i, ''));
-}
-
 export function TaskDetails({ task, onClose, onEdit, onToggle, onDelete }: TaskDetailsProps) {
-  const [notes, setNotes] = useState<LinkedVaultNote[]>([]);
-  const [loadingNotes, setLoadingNotes] = useState(true);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -37,14 +29,6 @@ export function TaskDetails({ task, onClose, onEdit, onToggle, onDelete }: TaskD
       previous?.focus();
     };
   }, [onClose]);
-
-  useEffect(() => {
-    setLoadingNotes(true);
-    api.get<{ notes: LinkedVaultNote[] }>('/tasks/' + task.id + '/notes')
-      .then((result) => setNotes(result.notes))
-      .catch(() => setNotes([]))
-      .finally(() => setLoadingNotes(false));
-  }, [task.id]);
 
   async function remove() {
     if (!window.confirm('Delete “' + task.title + '”? This cannot be undone.')) return;
@@ -76,16 +60,6 @@ export function TaskDetails({ task, onClose, onEdit, onToggle, onDelete }: TaskD
           {task.estimatedMinutes && <div><span>Estimated time</span><strong><Clock3 size={13} /> {durationLabel(task.estimatedMinutes)}</strong></div>}
           {task.recurrence !== 'NONE' && <div><span>Repeats</span><strong><Repeat2 size={13} /> {repeatLabels[task.recurrence]}</strong></div>}
         </div>
-
-        <section className="task-details-notes">
-          <h3><FileText size={15} /> Linked Obsidian notes <span>{notes.length}</span></h3>
-          {loadingNotes ? <p>Loading linked notes…</p> : notes.length ? <div>{notes.map((note) => (
-            <a key={note.id} href={obsidianUri(note)}>
-              <span><strong>{note.title}</strong><small>{note.folder || 'Vault root'}</small></span>
-              <ArrowUpRight size={15} />
-            </a>
-          ))}</div> : <p>No notes are linked to this task.</p>}
-        </section>
 
         <footer>
           <button className="detail-delete" onClick={remove}><Trash2 size={15} /> Delete</button>

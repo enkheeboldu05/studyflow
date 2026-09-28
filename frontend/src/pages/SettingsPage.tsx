@@ -1,6 +1,6 @@
-import { Archive, Download, Moon, Palette, Plus, RotateCcw, Sun, Terminal, Trash2, Upload } from 'lucide-react';
+import { Archive, Download, Palette, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
-import { VaultSettings } from '../components/VaultSettings';
+import { themes } from '../lib/themes';
 import { api } from '../lib/api';
 import type { AppTheme, Subject, UserSettings } from '../types';
 
@@ -78,7 +78,12 @@ export function SettingsPage({ settings, activeTheme, subjects, onThemeChange, o
       <div className="settings-grid">
         <section className="content-panel settings-section">
           <div className="settings-title"><Palette /><div><h2>Appearance</h2><p>Choose how StudyFlow feels on this device.</p></div></div>
-          <div className="theme-options"><button className={activeTheme === 'LIGHT' ? 'selected' : ''} onClick={() => onThemeChange('LIGHT')}><Sun />Light</button><button className={activeTheme === 'DARK' ? 'selected' : ''} onClick={() => onThemeChange('DARK')}><Moon />Dark navy</button><button className={activeTheme === 'AUBERGINE' ? 'selected' : ''} onClick={() => onThemeChange('AUBERGINE')}><Terminal />Aubergine</button><button className={activeTheme === 'SYSTEM' ? 'selected' : ''} onClick={() => onThemeChange('SYSTEM')}><RotateCcw />System</button></div>
+          <div className="theme-options" role="group" aria-label="Color theme">
+            {themes.map((theme) => <button key={theme.id} type="button" className={activeTheme === theme.id ? 'selected' : ''} aria-pressed={activeTheme === theme.id} onClick={() => { void Promise.resolve(onThemeChange(theme.id)).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not apply theme.')); }}>
+              <span className="theme-swatches" aria-hidden="true">{theme.colors.map((color) => <i key={color} style={{ background: color }} />)}</span>
+              <strong>{theme.name}</strong><small>{theme.description}</small>
+            </button>)}
+          </div>
           <label className="setting-row"><div><strong>Show completed tasks</strong><span>Keep today’s finished work visible.</span></div><input type="checkbox" checked={settings.showCompleted} onChange={(event) => update({ showCompleted: event.target.checked })} /></label>
           <label className="setting-row"><div><strong>Morning check-in</strong><span>Review unfinished work once each day.</span></div><input type="checkbox" checked={settings.morningCheckIn} onChange={(event) => update({ morningCheckIn: event.target.checked })} /></label>
         </section>
@@ -87,7 +92,6 @@ export function SettingsPage({ settings, activeTheme, subjects, onThemeChange, o
           <div className="settings-subject-list">{subjects.map((subject) => <div key={subject.id}><i style={{ background: subject.color }} /><span><strong>{subject.name}</strong><small>{pendingSubjectId === subject.id ? 'Saving…' : `${subject._count?.tasks ?? 0} tasks`}</small></span><button className="icon-button" disabled={pendingSubjectId !== null} onClick={() => archiveSubject(subject)} title={subject.archivedAt ? 'Restore' : 'Archive'}>{subject.archivedAt ? <RotateCcw /> : <Archive />}</button><button className="icon-button danger" disabled={pendingSubjectId !== null} onClick={() => deleteSubject(subject)} title="Delete"><Trash2 /></button></div>)}</div>
           <form className="add-subject-form" onSubmit={addSubject}><input type="color" name="color" value={subjectColor} onChange={(event) => setSubjectColor(event.target.value)} aria-label="Subject color" disabled={savingSubject} /><input name="name" value={subjectName} onChange={(event) => setSubjectName(event.target.value)} required maxLength={60} placeholder="New subject" disabled={savingSubject} /><button disabled={savingSubject || !subjectName.trim()}><Plus size={16} /> {savingSubject ? 'Adding…' : 'Add'}</button></form>
         </section>
-        <VaultSettings />
         <section className="content-panel settings-section data-settings">
           <div className="settings-title"><Download /><div><h2>Your data</h2><p>Keep a copy outside the SQLite database.</p></div></div>
           <div className="data-actions"><a className="secondary-button" href="/api/backup" download><Download />Export backup</a><button className="secondary-button" onClick={() => fileRef.current?.click()}><Upload />Restore backup</button><input ref={fileRef} hidden type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} /></div>
