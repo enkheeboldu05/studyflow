@@ -2,6 +2,7 @@ import { CalendarClock, Check, Clock3, Pencil, Repeat2, RotateCcw, Star, Trash2,
 import { useEffect, useRef } from 'react';
 import { displayDate, durationLabel } from '../lib/dates';
 import type { StudyTask } from '../types';
+import { TaskEntries } from './TaskEntries';
 
 interface TaskDetailsProps {
   task: StudyTask;
@@ -61,6 +62,8 @@ export function TaskDetails({ task, onClose, onEdit, onToggle, onDelete }: TaskD
           {task.recurrence !== 'NONE' && <div><span>Repeats</span><strong><Repeat2 size={13} /> {repeatLabels[task.recurrence]}</strong></div>}
         </div>
 
+        <TaskEntries key={task.id} taskId={task.id} />
+
         <footer>
           <button className="detail-delete" onClick={remove}><Trash2 size={15} /> Delete</button>
           <div>
@@ -74,4 +77,3 @@ export function TaskDetails({ task, onClose, onEdit, onToggle, onDelete }: TaskD
     </div>
   );
 }
-

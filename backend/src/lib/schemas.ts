@@ -33,8 +33,13 @@ export const taskSchema = z.object({
   position: z.number().finite().optional(),
 });
 
+export const taskEntrySchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
+
 export const taskPatchSchema = taskSchema.partial().extend({
   archivedAt: z.union([z.string().datetime(), z.null()]).optional(),
+  carryNote: taskEntrySchema.shape.content.optional(),
 });
 
 export const settingsSchema = z.object({

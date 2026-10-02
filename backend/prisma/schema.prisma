@@ -137,9 +137,21 @@ model Task {
   updatedAt          DateTime   @updatedAt
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject            Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  entries            TaskEntry[]
 
   @@index([userId, scheduledDate])
   @@index([userId, dueDate])
   @@index([userId, status])
   @@index([subjectId])
+}
+
+model TaskEntry {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
 }

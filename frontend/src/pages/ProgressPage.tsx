@@ -11,10 +11,11 @@ interface ProgressData {
 export function ProgressPage({ progress }: { progress: ProgressData }) {
   const heatDays = useMemo(() => {
     const end = new Date();
-    const start = addDays(end, -111);
-    start.setDate(start.getDate() - start.getDay());
-    return Array.from({ length: 119 }, (_, index) => addDays(start, index));
+    const start = addDays(end, -end.getDay() - 15 * 7);
+    return Array.from({ length: 112 }, (_, index) => addDays(start, index));
   }, []);
+  const today = dateKey(new Date());
+  const heatWeeks = heatDays.filter((_, index) => index % 7 === 0);
   const subjectEntries = Object.entries(progress.subjects).sort((a, b) => b[1].count - a[1].count);
   const maxSubject = Math.max(1, ...subjectEntries.map(([, value]) => value.count));
   return (
@@ -26,13 +27,22 @@ export function ProgressPage({ progress }: { progress: ProgressData }) {
         <div><Clock3 /><span>Planned effort</span><strong>{durationLabel(progress.summary.plannedMinutes) || '—'}</strong><small>completed this week</small></div>
       </section>
       <section className="content-panel heatmap-panel">
-        <div className="section-heading"><div><p className="kicker">Past 16 weeks</p><h2>Study activity</h2></div><TrendingUp /></div>
-        <div className="heatmap-layout"><div className="heat-day-labels"><span>Sun</span><span>Tue</span><span>Thu</span><span>Sat</span></div><div className="heatmap">{heatDays.map((day) => {
-          const data = progress.days[dateKey(day)];
-          const level = !data ? 0 : data.count >= 5 ? 4 : Math.min(4, data.count);
-          return <div key={dateKey(day)} className={`heat-cell level-${level}`} title={`${day.toLocaleDateString()}: ${data?.count ?? 0} completed`} />;
-        })}</div></div>
-        <div className="heat-legend"><span>Quiet</span>{[0, 1, 2, 3, 4].map((level) => <i key={level} className={`heat-cell level-${level}`} />)}<span>Active</span></div>
+        <div className="section-heading"><div><p className="kicker">16 weeks · through today</p><h2>Task activity</h2></div><TrendingUp /></div>
+        <p className="heat-summary">{progress.summary.thisWeek} tasks completed in the last seven days</p>
+        <div className="heatmap-layout">
+          <div className="heat-day-labels">{['Sun', '', 'Tue', '', 'Thu', '', 'Sat'].map((label, index) => <span key={index}>{label}</span>)}</div>
+          <div>
+            <div className="heat-month-labels">{heatWeeks.map((week, index) => <span key={dateKey(week)}>{index === 0 || week.getMonth() !== heatWeeks[index - 1].getMonth() ? week.toLocaleDateString(undefined, { month: 'short' }) : ''}</span>)}</div>
+            <div className="heatmap">{heatDays.map((day) => {
+              const key = dateKey(day);
+              const count = progress.days[key]?.count ?? 0;
+              const future = key > today;
+              const label = `${day.toLocaleDateString()}: ${future ? 'Future day' : `${count} completed tasks`}`;
+              return <div key={key} className={`heat-cell level-${Math.min(4, count)}${future ? ' heat-future' : ''}`} title={label} aria-label={label} tabIndex={future ? undefined : 0} />;
+            })}</div>
+          </div>
+        </div>
+        <div className="heat-legend"><span>Completed tasks:</span>{[0, 1, 2, 3, 4].map((level) => <span className="heat-legend-step" key={level}><i className={`heat-cell level-${level}`} />{level === 4 ? '4+' : level}</span>)}</div>
       </section>
       <section className="content-panel subject-progress">
         <div className="section-heading"><div><p className="kicker">Where your work went</p><h2>By subject</h2></div></div>

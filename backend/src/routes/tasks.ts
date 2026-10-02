@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { nextRecurringDate, parseDateOnly } from '../lib/dates.js';
-import { taskPatchSchema, taskSchema } from '../lib/schemas.js';
+import { taskEntrySchema, taskPatchSchema, taskSchema } from '../lib/schemas.js';
 
 export const tasksRouter = Router();
 
@@ -71,7 +71,8 @@ tasksRouter.patch('/:id', async (request, response, next) => {
     if (!(await ensureOwnedSubject(request.userId!, parsed.data.subjectId))) {
       return response.status(400).json({ error: 'Choose one of your active subjects.' });
     }
-    const dates = taskDates(parsed.data);
+    const { carryNote, ...patch } = parsed.data;
+    const dates = taskDates(patch);
     const moved = parsed.data.scheduledDate !== undefined
       && (parseDateOnly(parsed.data.scheduledDate)?.getTime() ?? null) !== (existing.scheduledDate?.getTime() ?? null);
     const completing = parsed.data.status === 'COMPLETED' && existing.status !== 'COMPLETED';
@@ -82,6 +83,8 @@ tasksRouter.patch('/:id', async (request, response, next) => {
         where: { id },
         data: {
           ...dates,
+          // Save the reflection and the new planned day together.
+          ...(carryNote ? { entries: { create: { content: carryNote } } } : {}),
           ...(moved ? { rescheduleCount: { increment: 1 } } : {}),
           ...(completing ? { completedAt: new Date() } : {}),
           ...(reopening ? { completedAt: null } : {}),
@@ -114,6 +117,51 @@ tasksRouter.patch('/:id', async (request, response, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+tasksRouter.get('/:id/entries', async (request, response, next) => {
+  try {
+    const taskId = Number(request.params.id);
+    if (!await prisma.task.findFirst({ where: { id: taskId, userId: request.userId! } })) {
+      return response.status(404).json({ error: 'Task not found.' });
+    }
+    const entries = await prisma.taskEntry.findMany({ where: { taskId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
+    response.json({ entries });
+  } catch (error) { next(error); }
+});
+
+tasksRouter.post('/:id/entries', async (request, response, next) => {
+  try {
+    const taskId = Number(request.params.id);
+    if (!await prisma.task.findFirst({ where: { id: taskId, userId: request.userId! } })) {
+      return response.status(404).json({ error: 'Task not found.' });
+    }
+    const parsed = taskEntrySchema.safeParse(request.body);
+    if (!parsed.success) return response.status(400).json({ error: 'Enter a note between 1 and 2000 characters.' });
+    const entry = await prisma.taskEntry.create({ data: { taskId, content: parsed.data.content } });
+    response.status(201).json({ entry });
+  } catch (error) { next(error); }
+});
+
+tasksRouter.patch('/:id/entries/:entryId', async (request, response, next) => {
+  try {
+    const id = Number(request.params.entryId);
+    const entry = await prisma.taskEntry.findFirst({ where: { id, taskId: Number(request.params.id), task: { userId: request.userId! } } });
+    if (!entry) return response.status(404).json({ error: 'Note not found.' });
+    const parsed = taskEntrySchema.safeParse(request.body);
+    if (!parsed.success) return response.status(400).json({ error: 'Enter a note between 1 and 2000 characters.' });
+    response.json({ entry: await prisma.taskEntry.update({ where: { id }, data: parsed.data }) });
+  } catch (error) { next(error); }
+});
+
+tasksRouter.delete('/:id/entries/:entryId', async (request, response, next) => {
+  try {
+    const id = Number(request.params.entryId);
+    const entry = await prisma.taskEntry.findFirst({ where: { id, taskId: Number(request.params.id), task: { userId: request.userId! } } });
+    if (!entry) return response.status(404).json({ error: 'Note not found.' });
+    await prisma.taskEntry.delete({ where: { id } });
+    response.status(204).end();
+  } catch (error) { next(error); }
 });
 
 tasksRouter.delete('/:id', async (request, response, next) => {

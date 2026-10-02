@@ -50,6 +50,14 @@ export interface StudyTask {
   createdAt: string;
 }
 
+export interface TaskEntry {
+  id: number;
+  taskId: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TaskInput {
   title: string;
   description?: string | null;
