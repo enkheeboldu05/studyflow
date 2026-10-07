@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="StudyFlow is a personal study planner for capturing tasks, planning your week, and seeing your progress.">
+  <title>StudyFlow — A little structure for your study day</title>
+  <style>
+    :root { color-scheme: light; --ink: #27382d; --muted: #687369; --green: #386046; --line: #e0e6dc; --paper: #f5f7f1; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.65 system-ui, sans-serif; }
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid #7ca989; outline-offset: 5px; }
+    .wrap { max-width: 1040px; margin: auto; padding: 0 28px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px 0; }
+    .brand { font-size: 20px; font-weight: 750; letter-spacing: -.7px; }
+    .mark { display: inline-grid; place-items: center; width: 32px; height: 32px; margin-right: 9px; border-radius: 10px; background: var(--green); color: white; }
+    nav { display: flex; gap: 26px; font-size: 14px; }
+    nav a:hover, .text-link:hover { text-decoration: underline; }
+    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 55px; align-items: center; padding: 65px 0 80px; }
+    .eyebrow { margin: 0 0 16px; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--green); }
+    h1 { margin: 0 0 20px; font-size: clamp(36px, 5vw, 54px); line-height: 1.12; letter-spacing: -2px; font-weight: 650; }
+    h2 { margin: 0 0 16px; font-size: 28px; line-height: 1.25; letter-spacing: -.8px; }
+    h3 { margin: 0 0 8px; font-size: 17px; }
+    p { margin: 0 0 20px; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin-top: 28px; }
+    .button { display: inline-block; background: var(--green); color: white; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .button:hover { background: #294c35; }
+    .text-link { font-size: 14px; font-weight: 600; }
+    .preview { padding: 26px; background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 55px #27382d0a; }
+    .preview-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 22px; }
+    .preview h3 { font-size: 23px; letter-spacing: -.6px; margin: 0; }
+    .pill { color: var(--green); background: #edf3e9; padding: 4px 9px; border-radius: 20px; font-size: 11px; }
+    .task { display: flex; gap: 12px; align-items: flex-start; padding: 15px 0; border-top: 1px solid #edf0e9; }
+    .check { flex-shrink: 0; width: 19px; height: 19px; margin-top: 4px; border: 1px solid #cbd5c8; border-radius: 5px; }
+    .done .check { display: grid; place-items: center; background: var(--green); color: white; border-color: var(--green); font-size: 12px; }
+    .task strong { display: block; font-size: 14px; font-weight: 550; }
+    .task small { display: block; color: var(--muted); font-size: 12px; }
+    .done strong { text-decoration: line-through; color: var(--muted); }
+    .progress { margin-top: 18px; background: var(--paper); padding: 13px 15px; border-radius: 8px; font-size: 12px; color: var(--muted); }
+    .track { height: 5px; background: #dfe6d8; margin-top: 9px; border-radius: 8px; overflow: hidden; }
+    .track span { display: block; height: 100%; width: 33.33%; background: #71967a; }
+    .caption { margin: 12px 0 0; font-size: 11px; text-align: center; }
+    section { padding: 48px 0; border-top: 1px solid var(--line); scroll-margin-top: 24px; }
+    .intro { display: grid; grid-template-columns: 1fr 1.6fr; gap: 60px; }
+    .intro p:last-child { margin: 0; }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 28px; }
+    .feature { padding: 22px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+    .number { display: block; color: #7b947d; font-size: 12px; margin-bottom: 20px; }
+    .feature p { font-size: 14px; margin: 0; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 26px; }
+    .steps p { font-size: 14px; margin: 0; }
+    .resources { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+    .resource { padding: 10px 16px; border: 1px solid #cbd5c8; border-radius: 8px; font-size: 14px; background: white; }
+    .resource:hover { border-color: var(--green); }
+    details { margin-top: 24px; color: var(--muted); font-size: 14px; }
+    summary { cursor: pointer; color: var(--ink); }
+    details p { margin: 12px 0 0; }
+    footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--line); padding: 24px 0 32px; font-size: 12px; color: var(--muted); }
+    @media (max-width: 720px) {
+      .wrap { padding: 0 22px; }
+      header { padding: 22px 0; } nav { gap: 15px; } nav .optional { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 35px; padding: 35px 0 45px; }
+      h1 { max-width: 440px; } .intro { grid-template-columns: 1fr; gap: 8px; }
+      .features, .steps { grid-template-columns: 1fr; gap: 14px; }
+      section { padding: 36px 0; } .number { margin-bottom: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="#" aria-label="StudyFlow home"><span class="mark" aria-hidden="true">s</span>StudyFlow</a>
+      <nav aria-label="Main navigation"><a href="#features">Features</a><a class="optional" href="#about">About</a><a href="/">Open app ↗</a></nav>
+    </header>
+    <main>
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Your personal study planner</p>
+          <h1>A little structure.<br>More room to focus.</h1>
+          <p>Keep your tasks, study plans, and progress in one place. Make a plan for today, and let your week stay flexible.</p>
+          <div class="actions"><a class="button" href="/">Open StudyFlow →</a><a class="text-link" href="#features">Explore the features ↓</a></div>
+        </div>
+        <!-- Sample tasks illustrate the planner without needing a signed-in account. -->
+        <div>
+          <div class="preview" aria-label="Sample StudyFlow planner with one of three tasks completed">
+            <div class="preview-top"><h3>Today's focus</h3><span class="pill">A fresh start</span></div>
+            <div class="task done"><span class="check" aria-hidden="true">✓</span><div><strong>Review lecture notes</strong><small>Computer Science · 25 min · Completed</small></div></div>
+            <div class="task"><span class="check" aria-hidden="true"></span><div><strong>Practice chapter 3 problems</strong><small>Mathematics · 45 min</small></div></div>
+            <div class="task"><span class="check" aria-hidden="true"></span><div><strong>Outline the team presentation</strong><small>Entrepreneurship · 30 min</small></div></div>
+            <div class="progress">One task done. One step forward.<div class="track" aria-hidden="true"><span></span></div></div>
+          </div>
+          <p class="caption">Sample planner preview</p>
+        </div>
+      </div>
+      <section class="intro" id="about">
+        <h2>Less scattered.<br>More manageable.</h2>
+        <div><p>Assignments, readings, and revision can pile up quickly. StudyFlow brings them together so you can decide what needs your attention next.</p><p>Choose when you want to work, keep real deadlines separate, and revisit unfinished tasks each morning. Your plan can change with your day.</p></div>
+      </section>
+      <section id="features">
+        <p class="eyebrow">Main features</p><h2>Small tools for a steadier routine.</h2>
+        <div class="features">
+          <article class="feature"><span class="number">01 / CAPTURE</span><h3>A place for every task</h3><p>Add work to your inbox and organize it by subject. Get it out of your head before deciding when to do it.</p></article>
+          <article class="feature"><span class="number">02 / PLAN</span><h3>A flexible week</h3><p>See today, the week, or your calendar. Move tasks to another day while keeping their deadlines intact.</p></article>
+          <article class="feature"><span class="number">03 / REFLECT</span><h3>Progress you can see</h3><p>Review unfinished work with a morning check-in, record study sessions, and look back at your progress.</p></article>
+        </div>
+      </section>
+      <section>
+        <p class="eyebrow">How it works</p><h2>Start with one manageable day.</h2>
+        <div class="steps"><div><h3>1. Gather your work</h3><p>Capture tasks and group them by subject.</p></div><div><h3>2. Pick your focus</h3><p>Schedule what you want to work on today.</p></div><div><h3>3. Check in and adjust</h3><p>Mark tasks complete and make room for what comes next.</p></div></div>
+      </section>
+      <section id="resources">
+        <p class="eyebrow">The project</p><h2>Simple by design.</h2>
+        <p>StudyFlow is a personal study planner built to run locally, with a SQLite database and JSON data exports.</p>
+        <div class="resources"><a class="button" href="/">Try StudyFlow →</a><a class="resource" href="https://github.com/enkheeboldu05/studyflow">GitHub ↗</a><a class="resource" href="https://github.com/enkheeboldu05/studyflow#readme">Project documentation ↗</a></div>
+        <details><summary>What is it built with?</summary><p>React and TypeScript for the interface, Express for the API, and Prisma with SQLite for storage.</p></details>
+      </section>
+    </main>
+    <footer><span>StudyFlow · Make space for learning.</span><span>A personal study planner.</span></footer>
+  </div>
+</body>
+</html>

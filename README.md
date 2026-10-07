@@ -40,6 +40,8 @@ npm run dev
 
 Open `http://127.0.0.1:5173`. The Express API runs at `http://127.0.0.1:3001`.
 
+The simple project landing page is at `http://127.0.0.1:5173/landing.html`. Its editable source is `frontend/public/landing.html`.
+
 ## Production-style local run
 
 ```bash
